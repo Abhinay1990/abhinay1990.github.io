@@ -62,7 +62,7 @@
         }
 
         // 2. Redirect to FlutterFlow app via deep link
-        const redirectUri = `pubapp://pubapp.com?access_token=${encodeURIComponent(access_token)}&refresh_token=${encodeURIComponent(refresh_token)}`;
+        const redirectUri = `pubapp://pubapp.com/dupr-callback?access_token=${encodeURIComponent(access_token)}&refresh_token=${encodeURIComponent(refresh_token)}`;
         window.location.href = redirectUri;
 
       } catch (err) {
