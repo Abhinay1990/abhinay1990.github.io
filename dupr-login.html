@@ -4,30 +4,26 @@
   <meta charset="UTF-8" />
   <title>DUPR Login</title>
   <style>
-    body {
-      font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-    }
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+  }
 
-    iframe {
-      width: 100%;
-      max-width: 420px;
-      height: 600px;
-      border: none;
-    }
+  body {
+    font-family: sans-serif;
+    overflow: hidden;
+  }
 
-    h2 {
-      margin-bottom: 20px;
-    }
-  </style>
+  iframe {
+    width: 100vw;
+    height: 100vh;
+    border: none;
+  }
+</style>
 </head>
 <body>
-  <h2>Login with DUPR</h2>
   <iframe
     id="dupr-login"
     src="https://uat.dupr.gg/login-external-app/dGVzdC1jay03OTVhOTFjZC03MzgzLTRkYjItZmVjMi0wNjc1YjFhZjYwYTg="
