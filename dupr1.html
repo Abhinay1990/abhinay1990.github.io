@@ -42,7 +42,7 @@
 
         if (!userToken || !email) return;
 
-        const redirectUri = `pubapp://pubapp.com?dupr_token=${encodeURIComponent(userToken)}&email=${encodeURIComponent(email)}&dupr_id=${encodeURIComponent(duprId)}&dupr_user_id=${encodeURIComponent(id)}`;
+        const redirectUri = `pubapp://pubapp.com/dupr-callback?dupr_token=${encodeURIComponent(userToken)}&email=${encodeURIComponent(email)}&dupr_id=${encodeURIComponent(duprId)}&dupr_user_id=${encodeURIComponent(id)}`;
 
         window.location.href = redirectUri;
       } catch (err) {
