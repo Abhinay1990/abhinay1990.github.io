@@ -37,18 +37,26 @@
 
   <script>
     function handleMessage(event) {
-      try {
-        const { userToken, refreshToken, email, duprId, id } = event.data;
+  try {
+    const { userToken, refreshToken, email, duprId, id } = event.data;
 
-        if (!userToken || !email) return;
-
-        const redirectUri = `pubapp://pubapp.com/dupr-callback?dupr_token=${encodeURIComponent(userToken)}&email=${encodeURIComponent(email)}&dupr_id=${encodeURIComponent(duprId)}&dupr_user_id=${encodeURIComponent(id)}`;
-
-        window.location.href = redirectUri;
-      } catch (err) {
-        console.error("Error parsing DUPR login message:", err);
-      }
+    if (!userToken || !email || !duprId || !id) {
+      throw new Error("Missing required DUPR fields");
     }
+
+    const redirectUri = `pubapp://pubapp.com/dupr-callback` +
+      `?dupr_token=${encodeURIComponent(userToken)}` +
+      `&refresh_token=${encodeURIComponent(refreshToken)}` +
+      `&email=${encodeURIComponent(email)}` +
+      `&dupr_id=${encodeURIComponent(duprId)}` +
+      `&dupr_user_id=${encodeURIComponent(id)}`;
+
+    console.log("[DUPR] Redirecting to:", redirectUri);
+    window.location.replace(redirectUri);
+  } catch (err) {
+    console.error("Error parsing DUPR login message:", err);
+  }
+}
 
     window.addEventListener("message", handleMessage, false);
   </script>
