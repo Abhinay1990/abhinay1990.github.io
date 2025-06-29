@@ -24,13 +24,25 @@
     if (!userToken || !email || !duprId || !id) {
       throw new Error("Missing required DUPR fields");
     }
+    
+    // Extract ratings from stats
+    let singles = "", doubles = "";
+    try {
+      const statsObj = typeof stats === "string" ? JSON.parse(stats) : stats;
+      singles = statsObj?.singles ?? "";
+      doubles = statsObj?.doubles ?? "";
+    } catch (err) {
+      console.warn("Failed to parse stats:", err);
+    }
 
     const redirectUri = `pubapp://pubapp.com/dupr-callback` +
       `?dupr_token=${encodeURIComponent(userToken)}` +
       `&refresh_token=${encodeURIComponent(refreshToken)}` +
       `&email=${encodeURIComponent(email)}` +
       `&dupr_id=${encodeURIComponent(duprId)}` +
-      `&dupr_user_id=${encodeURIComponent(id)}`;
+      `&dupr_user_id=${encodeURIComponent(id)}` +
+      `&singles_rating=${encodeURIComponent(singles)}` +
+      `&doubles_rating=${encodeURIComponent(doubles)}`;
 
     console.log("[DUPR] Redirecting to:", redirectUri);
     window.location.replace(redirectUri);
