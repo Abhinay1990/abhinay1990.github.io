@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>DUPR Login</title>
+
+  <!-- FULL-SCREEN LAYOUT -->
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+    }
+    body { font-family: sans-serif; overflow: hidden; }
+    iframe {
+      position: fixed;
+      inset: 0;               /* top:0 right:0 bottom:0 left:0 */
+      width: 100vw;
+      height: 100vh;
+      border: none;
+    }
+    /* Debug banner if something fails */
+    #error-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #c62828;
+      color: #fff;
+      padding: 12px;
+      font-size: 15px;
+      display: none;
+      z-index: 10;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="error-banner"></div>
+
+  <iframe
+    id="dupr-login"
+    src="https://uat.dupr.gg/login-external-app/dGVzdC1jay03OTVhOTFjZC03MzgzLTRkYjItZmVjMi0wNjc1YjFhZjYwYTg="
+    allow="clipboard-write"
+  ></iframe>
+
+  <script>
+    // Helper to surface fatal errors on-screen
+    function showError(msg) {
+      console.error(msg);
+      const banner = document.getElementById('error-banner');
+      banner.textContent = `DUPR login failed: ${msg}`;
+      banner.style.display = 'block';
+    }
+
+    async function handleMessage(event) {
+      console.log('[DUPR] message event.data →', event.data);
+
+      try {
+        const { userToken, email, duprId, id: duprUserId } = event.data;
+
+        if (!userToken || !email || !duprId || !duprUserId) {
+          throw new Error('Missing one or more required DUPR fields');
+        }
+
+        /* ---------- 1. CALL EDGE FUNCTION ---------- */
+        const payload = {
+          dupr_token: userToken,
+          email,
+          dupr_id: duprId,
+          dupr_user_id: duprUserId,
+        };
+        console.log('[DUPR] Payload sent to Edge Fn →', payload);
+
+        const edgeUrl =
+          'https://fxqlftzkucbdmehhqxgn.supabase.co/functions/v1/dupr-login';
+        const edgeResp = await fetch(edgeUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const edgeJson = await edgeResp.json();
+        console.log('[DUPR] Edge Fn response →', edgeJson);
+
+        if (edgeResp.status !== 200) {
+          throw new Error(
+            `Edge function error ${edgeResp.status}: ${edgeJson?.error ?? edgeResp.statusText}`
+          );
+        }
+
+        const { access_token, refresh_token } = edgeJson;
+        if (!access_token || !refresh_token) {
+          throw new Error('Edge function did not return tokens');
+        }
+
+        /* ---------- 2. REDIRECT BACK TO APP ---------- */
+        const redirectUri =
+          `pubapp://pubapp.com/dupr-callback` +
+          `?access_token=${encodeURIComponent(access_token)}` +
+          `&refresh_token=${encodeURIComponent(refresh_token)}`;
+
+        console.log('[DUPR] Redirect URI →', redirectUri);
+        window.location.href = redirectUri;
+
+      } catch (err) {
+        showError(err.message || err);
+      }
+    }
+
+    window.addEventListener('message', handleMessage, false);
+  </script>
+</body>
+</html>
