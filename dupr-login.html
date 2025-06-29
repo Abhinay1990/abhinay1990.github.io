@@ -4,210 +4,61 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DUPR Login</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      font-family: sans-serif;
-      overflow: hidden;
-    }
-
-    iframe {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw;
-      height: 100vh;
-      border: none;
-      z-index: 1;
-    }
-
-    #error-banner {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      background: #c62828;
-      color: white;
-      padding: 10px;
-      font-size: 14px;
-      display: none;
-      z-index: 10;
-    }
-
-    #user-review-form {
-      display: none;
-      position: absolute;
-      z-index: 2;
-      background: white;
-      padding: 16px;
-      width: 95vw;
-      max-width: 500px;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-
-    #user-review-form input, #user-review-form select {
-      width: 100%;
-      margin-bottom: 12px;
-      padding: 10px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-
-    #submit-button {
-      padding: 12px;
-      font-size: 16px;
-      width: 100%;
-      background: #007bff;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    #submit-button:hover {
-      background: #0056b3;
-    }
-
-  </style>
+  <title>DUPR Login Redirect</title>
 </head>
 <body>
-
-  <div id="error-banner"></div>
+  <h3 style="text-align:center;">Logging in with DUPR...</h3>
 
   <iframe
     id="dupr-login"
     src="https://uat.dupr.gg/login-external-app/dGVzdC1jay03OTVhOTFjZC03MzgzLTRkYjItZmVjMi0wNjc1YjFhZjYwYTg="
     allow="clipboard-write"
+    style="width: 100vw; height: 90vh; border: none;"
   ></iframe>
-
-  <div id="user-review-form">
-    <input id="email" placeholder="Email" readonly />
-    <input id="phone" placeholder="Mobile" readonly />
-    <input id="first_name" placeholder="First Name" />
-    <input id="last_name" placeholder="Last Name" />
-    <input id="birthdate" placeholder="Date of Birth" />
-    <select id="gender">
-      <option value="">Select Gender</option>
-      <option value="MALE">Male</option>
-      <option value="FEMALE">Female</option>
-      <option value="OTHER">Other</option>
-    </select>
-    <input id="city" placeholder="City" />
-    <input id="dupr_id" placeholder="DUPR ID" readonly />
-    <button id="submit-button">Confirm and Continue</button>
-  </div>
 
   <script>
     function showError(msg) {
-      const banner = document.getElementById("error-banner");
-      banner.textContent = msg;
-      banner.style.display = "block";
+      console.error("[DUPR Login Error]", msg);
+      alert("Login failed: " + msg);
     }
 
-    let globalData = {};
-
     async function handleMessage(event) {
-      const user = event?.data?.result?.user;
-      const token = event?.data?.result?.accessToken;
-      const refresh = event?.data?.result?.refreshToken;
+      const duprToken = event.userToken;
+      const refreshToken = event.refreshToken;
+      const email = event.email;
+      const duprId = event.duprId;
+      const duprUserId = event.id;
 
-      if (!user || !token) return showError("DUPR login failed: Incomplete data");
-
-      const check = await fetch("/functions/v1/dupr-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          check_only: true,
-          dupr_token: token,
-          email: user.email,
-          dupr_id: user.referralCode
-        })
-      });
-
-      const result = await check.json();
-
-      if (result.status === "EXISTING_USER") {
-        const redirect = `pubapp://pubapp.com/dupr-callback?uuid=${result.uuid}&access_token=${result.access_token}&refresh_token=${result.refresh_token}`;
-        window.location.href = redirect;
-        return;
+      if (!duprToken || !email || !duprId || !duprUserId) {
+        return showError("Missing one or more required fields from DUPR");
       }
 
-      // Populate form
-      const fullName = user.fullName.trim();
-      const parts = fullName.split(" ");
-      const lastName = parts.length > 1 ? parts.pop() : "";
-      const firstName = parts.join(" ").trim();
+      // Fetch full DUPR profile using token
+      const profileResp = await fetch("https://api.dupr.gg/api/external/v1/user", {
+        headers: { Authorization: `Bearer ${duprToken}` }
+      });
+      const profileJson = await profileResp.json();
+      const user = profileJson?.result?.user;
+      if (!user) return showError("Failed to fetch DUPR profile");
 
-      globalData = {
-        dupr_token: token,
-        refresh_token: refresh,
-        email: user.email,
-        phone: user.phone,
-        fullName,
-        firstName,
-        lastName,
-        birthdate: user.birthdate,
-        referralCode: user.referralCode,
-        gender: user.gender,
-        city: user.addresses?.[0]?.shortAddress ?? "",
-        imageUrl: user.imageUrl
-      };
+      const singles = user?.stats?.singles ?? "";
+      const doubles = user?.stats?.doubles ?? "";
 
-      document.getElementById("email").value = globalData.email;
-      document.getElementById("phone").value = globalData.phone;
-      document.getElementById("first_name").value = globalData.firstName;
-      document.getElementById("last_name").value = globalData.lastName;
-      document.getElementById("birthdate").value = globalData.birthdate;
-      document.getElementById("gender").value = globalData.gender;
-      document.getElementById("city").value = globalData.city;
-      document.getElementById("dupr_id").value = globalData.referralCode;
+      const redirectUrl =
+        `pubapp://pubapp.com/dupr-callback` +
+        `?email=${encodeURIComponent(email)}` +
+        `&dupr_id=${encodeURIComponent(duprId)}` +
+        `&access_token=${encodeURIComponent(duprToken)}` +
+        `&refresh_token=${encodeURIComponent(refreshToken)}` +
+        `&dupr_user_id=${encodeURIComponent(duprUserId)}` +
+        `&singles_rating=${encodeURIComponent(singles)}` +
+        `&doubles_rating=${encodeURIComponent(doubles)}`;
 
-      document.getElementById("user-review-form").style.display = "block";
+      console.log("[Redirecting to app]", redirectUrl);
+      window.location.href = redirectUrl;
     }
 
     window.addEventListener("message", handleMessage, false);
-
-    document.getElementById("submit-button").addEventListener("click", async () => {
-      const payload = {
-        dupr_token: globalData.dupr_token,
-        refresh_token: globalData.refresh_token,
-        email: globalData.email,
-        phone: globalData.phone,
-        fullName: globalData.firstName + " " + globalData.lastName,
-        birthdate: document.getElementById("birthdate").value,
-        referralCode: globalData.referralCode,
-        gender: document.getElementById("gender").value,
-        location: document.getElementById("city").value,
-        imageUrl: globalData.imageUrl
-      };
-
-      const res = await fetch("/functions/v1/dupr-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        showError(json.error || "Unexpected error");
-        return;
-      }
-
-      const redirect = `pubapp://pubapp.com/dupr-callback?uuid=${json.uuid}&access_token=${json.access_token}&refresh_token=${json.refresh_token}`;
-      window.location.href = redirect;
-    });
   </script>
-
 </body>
 </html>
